@@ -1,0 +1,158 @@
+IPT TUTORIAL (M. Rozenberg, modified by L. de' Medici)
+
+GOAL: to run the IPT codes for the (approximate) solution of 
+      the Hubbard model in DMFT
+
+
+* There are 2 codes:
+  pertre.f  for real frequency IPT solution
+  pertim.f  for imaginary frequency IPT solution
+
+
+* They respectively have two different `input' files 
+
+
+The files in detail:
+
+***********************************************************
+
+Input file for real axis IPT:
+
+0.0005,1.,2.3
+
+dE (energy mesh), D (half-bandwidth) , U
+
+* * * * * * * * * * 
+Input file for imaginary axis IPT:
+
+1.d0    0.0
+0.0     1
+0       1
+2.0d0   1
+1.d-3   1
+20      1
+
+D,      xmu0
+dmu,    nmu
+itu,    nl
+u0,     du 
+t0,     dt
+nloop,  imet
+
+D    = half-bandwidth of semi-circular DOS (Bethe lattice)
+xmu0 = initial chemical potential
+dmu  = step for the chemical potential variation
+nmu  = number of chemical potential points
+itu  = flag that selects Temperature or U variation
+       itu=0 for U   or   itu=1 for Temperature 
+nl   = number of U or Temperaure points
+u0   = initial interaction strength U
+du   = step for the U variation
+t0   = initial Temperature
+dt   = step for the Temperature variation
+nloop= number of self-concistency iteration loops
+imet = choose the initial seed (1=metallic, 0=insulating)
+xmix = mixing factor   xmix*new+(1-xmix)*old to ease the iterations and convergence
+nl0 = nuber of printed iterations
+
+
+*guide for nloop*
+
+metallic solution (imet=1)
+
+0.0 < U < 2.0   nloop=10
+2.0 < U < 2.5   nloop=25
+2.5 < U < 3.0   nloop=50
+
+insulating solution (imet=0)
+
+2.5 < U < 3.0   nloop=100
+3.0 < U         nloop=20
+
+
+
+
+************************************************************
+
+output files:
+
+for pertre.f:
+
+'rho' is Im[G(w)]   (the DOS up to a factor of pi)
+'Sigma' is Re[Sigma(w)], Im[Sigma(w)]
+fort.26 is Im[G(w)]  (impurity problem, no self-consistency, imet=1)
+
+
+for pertim.f
+
+'Gw' has Re[G(iw)],Im[G(iw)]
+'G0w' has Re[Go(iw)],Im[Go(iw)]
+'Sigma' has Re[Sigma(iw)],Im[Sigma(iw)]
+'n_vs_mu' has <n-1/2>, single occupation (per spin)
+'double_occ' has <d>, double occupation
+'test' has the convergence test as a function of iterations
+
+************************************************************
+
+To compile the code type (filename = pertre or pertim):
+
+gfortran -O3 filename.f -O -o filename
+
+To run the codes type:
+
+./filename
+
+************************************************************
+
+
+Lets run the codes now
+
+Excercises
+
+1. Run the real-frequency code pertre.f for several values of U (set the 
+half-bandwidth D=1) to check out the metal-insulator transition at T=0.
+The DOS(w) is written in "rho".
+Note that Re[Sigma] is linear for a metal (Fermi liquid)
+and that it diverges as 1/w in the insulator.
+
+2. Approach the MIT at Uc_2 \approx 3.D (metal to insulator) from below and observe 
+how the different contributions to the DOS (quasiparticle peak and Hubbard
+bands) evolve as you get close to the critical value.
+
+3. The effect of the self-consistency condition: For several values of
+U (U < Uc_2), run the real-frequency code and compare the output files
+"rho" and "fort.26" that contain the converged DOS(w) and the DOS(w)
+right after the first iteration. This last quantity corresponds to the solution
+of the Single Impurity Anderson Model for a semi-circular conduction band
+(within 2nd order perturbation theory of Yamada and Yosida). You can observe
+the effect of the self-consistency. 
+question: Thinking in terms of the SIAM (or Kondo model) can you try to explain
+qualitatively what you see.
+
+4. Using the Matsubara-frequency code, run for several values of U (take 
+T=0.001) and observe how the MIT looks like on the imaginary axis.
+Note that for different values of U, you should change the number of
+iteration loops input parameter `nloop' as suggested at the end of "input".
+You may want to compare some Green functions on the real axis and
+on the imaginary axis for the same value of U. Also you may check that
+the Uc_2 does coincide with the value Uc_2 \approx 3 from real frequency code pertre.f.
+Also check that as you approach the Uc_2 from below the w=0 slope of Im[Sigma]
+diverges which signals the divergency of the effective mass at the MIT.
+
+5. Using both codes check for the existence of 2 different solutions
+at Uc_1 < U <Uc_2 (Uc_1 \approx 2.6, Uc_2 \approx 3.)
+
+6. Comparison between IPT and ED. Run pertim.f for U=2 and T=0.0625.
+Compare the results for G(w_n) to ED results for the same value
+of the parameters. 
+Now set U=4 and compare again.
+
+Optional excercise:
+7. Approach the finite T 2nd order critical point (using the Matsubara-
+frequency code). Try to obtain the values for Uc and Tc. Watch out for
+critical slowing down.
+One way to obtain Uc and Tc is to calculate the susceptibility
+d<D>/dU (<D> is double occupation "fort.67") and find the point
+where this quantity diverges. The behavior is analogous to that of
+the classical mean field theory on the ising model in a magnetic
+field.
