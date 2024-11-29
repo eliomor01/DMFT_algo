@@ -6,11 +6,13 @@ import matplotlib.pyplot as plt
 ########################################################################
 
 #D0, u0, nloop, xmix, max_omega, T, tol  = np.loadtxt('input.bin')
-D0, u0, nloop, xmix, max_omega, T, tol  = 1.0, 2.0, 40, 0.7, 4.0, 0.1, 1e-6
+D0, u0, nloop, xmix, n_omega, T, tol  = 1.0, 1.5, 40, 0.7, 500, 0.1, 1e-6
 
 try:
 
-    DOS = np.loadtxt('DOS.txt')
+    data1 = np.loadtxt('.\\DOS.txt')
+    energies = data1[:,0]
+    DOS   = data1[:,1]
 
 except:
 
@@ -23,13 +25,23 @@ except:
 # DMFT ROUTINES
 ########################################################################
 
-def DMFT_iteration_first_half(u0,S_imp,Energies,Momega,tau,T):
+def DMFT_first_iteration(u0,S_imp,Energies,dos,Momega,tau,T):
     N_tau = len(tau)
-    G_loc = Dyson_Green(S_imp, energies, DOS, Momega)
-    G_0 = G_loc/(1+G_loc*S_imp)
-    G_0_tau = Inv_Matsubara_Fourier_div (G_0,T,tau,Momega)
+    G_loc = Dyson_Green(S_imp, Energies, dos, Momega)
+    g_0 = G_loc/(1+G_loc*S_imp)
+    G_0_tau = Inv_Matsubara_Fourier_div (g_0,T,tau,Momega)
+    plt.plot(tau, G_0_tau.real)
+    plt.show()
     new_S_imp = Self_Energy_fromG(G_0_tau,u0,tau,Momega)
-    return G_loc, G_0, G_0_tau, new_S_imp
+    return G_loc, g_0, G_0_tau, new_S_imp
+
+def DMFT_iteration_first_half(u0,S_imp,Energies,dos,Momega,tau,T):
+    N_tau = len(tau)
+    G_loc = Dyson_Green(S_imp, Energies, dos, Momega)
+    g_0 = G_loc/(1+G_loc*S_imp)
+    G_0_tau = Inv_Matsubara_Fourier_div (g_0,T,tau,Momega)
+    new_S_imp = Self_Energy_fromG(G_0_tau,u0,tau,Momega)
+    return G_loc, g_0, G_0_tau, new_S_imp
 
 def Self_Energy_fromG (G,U,tau,omega):
     Ntau = len(tau)
@@ -43,8 +55,8 @@ def Matsubara_Fourier (v):
 
 def Inv_Matsubara_Fourier_div (G,T,tau,omega):
     N_tau = len(tau)
-    Gp = G - 1/(omega)
-    return 2*T*np.sum(np.real(Gp.reshape((-1,1)).repeat(N_tau,1)*np.exp(-np.tensordot(omega,tau,axes=0))),axis=0) - np.sign(tau)/2
+    Gp = G - 1/(1.0j*omega)
+    return 2*T*np.sum(np.real(Gp.reshape((-1,1)).repeat(N_tau,1)*np.exp(-1.0j*np.tensordot(omega,tau,axes=0))),axis=0) - np.sign(tau)/2
     
     
 def Dyson_Green (Self_Energy, Energy, Density_Energy, omega):
@@ -63,25 +75,21 @@ def Dyson_Green (Self_Energy, Energy, Density_Energy, omega):
 def solve_dyson(G_0, sigma):
     
     """
-    Solves the Dyson equation given the impurity self-energy and a (1) non-interacting /
-    (2) local Green's function. 
+    Solves the Dyson equation given the impurity self-energy and a non-interacting Green's function. 
     
-    In the first case, yields the impurity Green's function. In the second case, yields
-    the non interacting Green's function.
-    
+    Yields the impurity Green's function
+
     Input:
-        G_0:   (1) Non-interacting Green's function in Matsubara axis
-               (2) Local Green's function in Matsubara axis
+        G_0:   Non-interacting Green's function in Matsubara axis
              
         Sigma: The impurity self-energy
         
     Output:
-        G_loc: (1) Impurity Green's function in Matsubara axis
-               (2) Non-interacting Green's function in Matsubara axis
+        G_loc: Impurity Green's function in Matsubara axis 
     """
     
     inverse_G0 = 1/G_0
-    G_loc = 1/(inverse_G0 + sigma)
+    G_loc = 1/(inverse_G0 - sigma)
     
     return G_loc
 
@@ -113,48 +121,6 @@ def convergence_test(G_imp, G_loc, delta):
     return bool(np.where(D < delta, True, False))
 
 
-# Pade approximation for analytical continuation
-
-def real_axis_gf(G_loc, Momega, Romega, delta):
-    
-    '''
-    Given the local Green's function in the Matsubara axis, computes the analytical
-    continuation to the real axis with the Maximum Entropy method.
-    
-    Input:
-        G_loc:  Local Green's function in Matsubara axis
-        Momega: Matsubara axis grid
-        Romega: Real frequency axis grid
-        delta:  Precision level of the DMFT loop
-        
-    Output:
-        G_loc_real: Local Green's function in real frequency axis
-    '''
-    
-    import continuation as cont
-    
-    G_loc_real_double = np.zeros((Romega.shape[0],2))
-    
-    err = np.ones_like(Romega)*delta
-    model = np.ones_like(Romega)
-    model /= np.trapz(model, Romega)
-    
-    probl = cont.AnalyticContinuationProblem(im_axis=Momega, re_axis=Romega,
-                                             im_data=G_loc, kernel_mode='freq_fermionic')
-    
-    sol, _ = probl.solve(method='maxent_svd', alpha_determination='chi2kink', optimizer='newton',
-                         model=model, stdev=err, interactive=True, alpha_start=1e12, alpha_end=1e-2,
-                         preblur=True, blur_width=0.5)
-    
-    G_loc_real_double[:,0] = sol.backtransform.real
-    G_loc_real_double[:,1] = sol.backtransform.imag
-    
-    G_loc_real = G_loc_real_double[:,0] + 1j*G_loc_real_double[:,1]
-    
-    return G_loc_real
-    
-    
-
 # Spectral function
 
 def compute_spectral(G_loc_real):
@@ -180,9 +146,8 @@ def compute_spectral(G_loc_real):
 # INITIALIZE FUNCTIONS
 ########################################################################
 
-Momega = (2*np.arange(500) + 1)*np.pi*T
-Romega = Momega
-tau = np.linspace(0, 1/T, 1000)
+Momega = (2*np.arange(n_omega) + 1)*np.pi*T
+tau = np.linspace(0, 1/T, 10000)
 S_imp = np.zeros((len(Momega)))
 
 
@@ -190,14 +155,17 @@ S_imp = np.zeros((len(Momega)))
 # DMFT LOOP
 ########################################################################
 
+G_loc, G_0, G_0_tau, new_S_imp = DMFT_first_iteration(u0,S_imp, energies, DOS, Momega, tau, T)
+G_imp = solve_dyson(G_0, new_S_imp)
+S_imp = new_S_imp
 
-for k in range(nloop):
+for k_loop in range(nloop):
 
-    G_loc, G_0, G_0_tau, new_S_imp = DMFT_iteration_first_half(u0,S_imp, DOS, Momega, tau, T)
+    G_loc, G_0, G_0_tau, new_S_imp = DMFT_iteration_first_half(u0,S_imp, energies, DOS, Momega, tau, T)
     G_imp = solve_dyson(G_0, new_S_imp)
     
-    if convergence_test(G_imp, G_loc,tol):
-        print('Convergence has been reached, iteration '+str(k))
+    if convergence_test(G_imp, G_loc, tol):
+        print('Convergence has been reached, iteration '+str(k_loop))
         break
     else:
         S_imp = xmix * new_S_imp + (1-xmix) * S_imp
