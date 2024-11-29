@@ -2,13 +2,26 @@ import numpy as np
 
 
 def DMFT_iteration_first_half(S_imp,Energies,Momega,tau,T):
-    N_freqs = len(Momega)
     N_tau = len(tau)
-    epsrep = Energies.reshape((1,-1)).repeat(N_freqs,0)
-    N_e = epsrep.shape[1]
-    summand =Momega.reshape((-1,1)).repeat(N_e,1) - epsrep - S_imp.reshape((-1,1)).repeat(N_e,1)
-    G_loc = np.sum(1/summand, axis=1)/(N_e)
+    G_loc = Dyson_Green(S_imp, Energies, Momega)
     G_0 = G_loc/(1+G_loc*S_imp)
-    Gp_0 = G_0 - 1/(Momega)
-    G_0_tau = 2*T*np.sum(np.real(Gp_0.reshape((-1,1)).repeat(N_tau,1)*np.exp(-np.tensordot(Momega,tau,axes=0))),axis=0) - np.sign(tau)/2
+    G_0_tau = Inv_Matsubara_Fourier_div (G_0,T,tau,Momega)
     return G_0_tau
+
+def Matsubara_Fourier (v):
+    return np.fft.fft(v)
+
+def Inv_Matsubara_Fourier_div (G,T,tau,omega):
+    N_tau = len(tau)
+    Gp = G - 1/(omega)
+    return 2*T*np.sum(np.real(Gp.reshape((-1,1)).repeat(N_tau,1)*np.exp(-np.tensordot(omega,tau,axes=0))),axis=0) - np.sign(tau)/2
+    
+    
+def Dyson_Green (Self_Energy, Energy, Density_Energy, omega):
+    N_freqs = len(omega)
+    epsrep = Energy.reshape((1,-1)).repeat(N_freqs,0)
+    desrep = Density_Energy.reshape((1,-1)).repeat(N_freqs,0)
+    if len(epsrep) == len(desrep):
+        N_e = epsrep.shape[1]
+        summand =omega.reshape((-1,1)).repeat(N_e,1) - epsrep - Self_Energy.reshape((-1,1)).repeat(N_e,1)
+        return np.sum(desrep/summand, axis=1)/(N_e)
