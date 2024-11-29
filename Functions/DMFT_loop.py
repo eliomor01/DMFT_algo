@@ -53,8 +53,9 @@ def Dyson_Green (Self_Energy, Energy, Density_Energy, omega):
     desrep = Density_Energy.reshape((1,-1)).repeat(N_freqs,0)
     if len(epsrep) == len(desrep):
         N_e = epsrep.shape[1]
+        N_states = desrep.sum()
         summand =omega.reshape((-1,1)).repeat(N_e,1) - epsrep - Self_Energy.reshape((-1,1)).repeat(N_e,1)
-        return np.sum(desrep/summand, axis=1)/(N_e)
+        return np.sum(desrep/summand, axis=1)/(N_states)
 
 
 # Dyson equation
@@ -179,7 +180,7 @@ def compute_spectral(G_loc_real):
 # INITIALIZE FUNCTIONS
 ########################################################################
 
-Momega = (2*np.arange(1000) + 1)*np.pi*T
+Momega = (2*np.arange(500) + 1)*np.pi*T
 Romega = Momega
 tau = np.linspace(0, 1/T, 1000)
 S_imp = np.zeros((len(Momega)))
@@ -199,10 +200,29 @@ for k in range(nloop):
         print('Convergence has been reached, iteration '+str(k))
         break
     else:
-        S_imp = xmix * S_imp + (1-xmix) * new_S_imp
+        S_imp = xmix * new_S_imp + (1-xmix) * S_imp
 
-G_loc_real = real_axis_gf(G_loc, Momega, Romega, tol)
-spectral   = compute_spectral(G_loc_real)
+path1 = '.\\g_loc.dat'
+with open(path1, 'w') as writer:
+
+    for i in range(len(Momega)):
+        writer.write(str(Momega[i]) + ' ' + str(np.real(G_loc[i])) + ' ' + str(np.imag(G_loc[i])) +'\n')
+
+path2 = '.\\sigma.dat'
+with open(path2, 'w') as writer:
+
+    for i in range(len(Momega)):
+        writer.write(str(Momega[i]) + ' ' + str(np.real(S_imp[i])) + ' ' + str(np.imag(S_imp[i])) +'\n')
+
+
+import pade as pade
+pade
+
+G_loc_real_table = np.loadtxt('.\\pade.dat')
+G_loc_real = G_loc_real_table[:,1] + 1.0j*G_loc_real_table[:,2]
+
+spectral = compute_spectral(G_loc_real)
+Romega = G_loc_real_table[:,0]
 
 plt.plot(Romega, spectral)
 plt.show()
