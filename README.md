@@ -33,8 +33,8 @@ Check input structure on the virtualbox DMFT and retake it to do comparisons aft
 
 
 #########################################################################################################
-##v1:
-
+##    v1
+#########################################################################################################
 Note that DMFT_solved.zip includes a complete implementation of the IPT solver. Check for reference
 
 A numerical integration yields different (and maybe better?) results when computing the local Green's function. We should take care here
@@ -43,4 +43,18 @@ The FFT approach seems the most reasonable one. In DMFT_solved, check ./Document
 
 The pade.py code is either not working or very bad. When using a Maximum Entropy approach, the results are metallic, but quite off I'd say.
 However, the Green's function in Matsubara axis in the metallic phase seems ok.
+
+Now the FFT in the first iteration goes smooth. The price to pay is a weird handling of the Matsubara frequencies, which I accomodated to the numpy sintax.
+In the end, we can (and shall) only keeep positive freqs.
+
+SOLVED ISSUES:
+  - FFT seems to work
+  - The DMFT loop is actually running
+  - Im(GF) of the metallic phase in Matsubara axis goes to -2 at zero; good ! Sanity check
+
+TASKS:
+  - Either learn to use properly the ana_cont package, so that MaxEnt yields a better result, or ask Michele why pade.py is not working
+  - Insulating phases are still a problem. We should address how to initialize insulating phases. My proposal is to change a bit the DMFT loop so that we start
+from a GF, not a self-energy. That way, the typical insulating seed goes as 1/i*omega
+  - We should carefully check if the implementation of Dyson_Green is ok. The direct numerical integration is surely fine, look at the GF.
 
