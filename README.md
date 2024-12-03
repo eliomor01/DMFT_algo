@@ -32,7 +32,7 @@ For the moment do only the fermionic case
 Check input structure on the virtualbox DMFT and retake it to do comparisons after
 
 
-
+#########################################################################################################
 ##v1:
 
 Note that DMFT_solved.zip includes a complete implementation of the IPT solver. Check for reference
